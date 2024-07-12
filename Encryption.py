@@ -5,10 +5,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 
-# Constants for file names
-FILE_NAME = "Enter your file name"
-ENCRYPTED_FILE_NAME = FILE_NAME + ".enc"
-SALT_FILE_NAME = FILE_NAME + ".salt"
+ENCRYPTED_FILE_EXTENSION = ".enc"  # Extension for encrypted files
+SALT_FILE_EXTENSION = ".salt"  # Extension for salt files
 
 def generate_key_from_passphrase(passphrase, salt=None):
     """
@@ -48,7 +46,7 @@ def secure_delete(file_path):
     # Delete the file
     os.remove(file_path)
 
-def encrypt_file(passphrase):
+def encrypt_file(passphrase, file_path):
     """
     Encrypt the specified file using a passphrase. 
     Securely delete the original file after encryption.
@@ -61,39 +59,42 @@ def encrypt_file(passphrase):
         fernet = Fernet(key)
         
         # Read the file content
-        with open(FILE_NAME, 'rb') as file:
+        with open(file_path, 'rb') as file:
             file_data = file.read()
         
         # Encrypt the data
         encrypted_data = fernet.encrypt(file_data)
         
         # Write the encrypted data to a new file
-        with open(ENCRYPTED_FILE_NAME, 'wb') as encrypted_file:
+        encrypted_file_path = file_path + ENCRYPTED_FILE_EXTENSION
+        with open(encrypted_file_path, 'wb') as encrypted_file:
             encrypted_file.write(encrypted_data)
         
         # Store the salt in a separate file
-        with open(SALT_FILE_NAME, 'wb') as salt_file:
+        salt_file_path = file_path + SALT_FILE_EXTENSION
+        with open(salt_file_path, 'wb') as salt_file:
             salt_file.write(salt)
         
         # Securely delete the original file
-        secure_delete(FILE_NAME)
+        secure_delete(file_path)
         
-        print(f"File '{FILE_NAME}' encrypted successfully and original securely deleted.")
+        print(f"File '{file_path}' encrypted successfully and original securely deleted.")
     except FileNotFoundError:
-        print(f"Error: The file '{FILE_NAME}' was not found.")
+        print(f"Error: The file '{file_path}' was not found.")
     except PermissionError:
-        print(f"Error: Permission denied when trying to access '{FILE_NAME}'.")
+        print(f"Error: Permission denied when trying to access '{file_path}'.")
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
-def decrypt_file(passphrase):
+def decrypt_file(passphrase, encrypted_file_path):
     """
     Decrypt the encrypted file using the provided passphrase.
     Securely delete the encrypted file and salt file after decryption.
     """
     try:
         # Read the salt from the salt file
-        with open(SALT_FILE_NAME, 'rb') as salt_file:
+        salt_file_path = encrypted_file_path.replace(ENCRYPTED_FILE_EXTENSION, SALT_FILE_EXTENSION)
+        with open(salt_file_path, 'rb') as salt_file:
             salt = salt_file.read()
         
         # Generate the key from the passphrase and salt
@@ -103,21 +104,22 @@ def decrypt_file(passphrase):
         fernet = Fernet(key)
         
         # Read the encrypted data from the file
-        with open(ENCRYPTED_FILE_NAME, 'rb') as encrypted_file:
+        with open(encrypted_file_path, 'rb') as encrypted_file:
             encrypted_data = encrypted_file.read()
         
         # Decrypt the data
         decrypted_data = fernet.decrypt(encrypted_data)
         
         # Write the decrypted data back to the original file
-        with open(FILE_NAME, 'wb') as file:
+        original_file_path = encrypted_file_path.replace(ENCRYPTED_FILE_EXTENSION, "")
+        with open(original_file_path, 'wb') as file:
             file.write(decrypted_data)
         
         # Securely delete the encrypted file and salt file
-        secure_delete(ENCRYPTED_FILE_NAME)
-        secure_delete(SALT_FILE_NAME)
+        secure_delete(encrypted_file_path)
+        secure_delete(salt_file_path)
         
-        print(f"File '{FILE_NAME}' decrypted successfully and encrypted version securely deleted.")
+        print(f"File '{original_file_path}' decrypted successfully and encrypted version securely deleted.")
     except FileNotFoundError:
         print(f"Error: The encrypted file or salt file was not found.")
     except PermissionError:
@@ -125,9 +127,38 @@ def decrypt_file(passphrase):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
+def encrypt_folder(passphrase, folder_path):
+    """
+    Encrypt all files in the specified folder using a passphrase. 
+    Securely delete the original files after encryption.
+    """
+    try:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                encrypt_file(passphrase, file_path)
+        print(f"Folder '{folder_path}' encrypted successfully.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+
+def decrypt_folder(passphrase, encrypted_folder_path):
+    """
+    Decrypt all files in the specified encrypted folder using the provided passphrase.
+    Securely delete the encrypted files and salt files after decryption.
+    """
+    try:
+        for root, _, files in os.walk(encrypted_folder_path):
+            for file in files:
+                if file.endswith(ENCRYPTED_FILE_EXTENSION):
+                    encrypted_file_path = os.path.join(root, file)
+                    decrypt_file(passphrase, encrypted_file_path)
+        print(f"Folder '{encrypted_folder_path}' decrypted successfully.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+
 def main():
     """
-    Main function to handle user input for encrypting or decrypting a file.
+    Main function to handle user input for encrypting or decrypting a file or folder.
     """
     while True:
         # Prompt the user to choose an action
@@ -137,11 +168,18 @@ def main():
             break
         elif action in ['e', 'd']:
             passphrase = input("Enter the passphrase: ")
+            path = input("Enter the path to the file or folder: ")
             
             if action == 'e':
-                encrypt_file(passphrase)
+                if os.path.isdir(path):
+                    encrypt_folder(passphrase, path)
+                else:
+                    encrypt_file(passphrase, path)
             else:
-                decrypt_file(passphrase)
+                if os.path.isdir(path):
+                    decrypt_folder(passphrase, path)
+                else:
+                    decrypt_file(passphrase, path)
         else:
             print("Invalid action. Please try again.")
 
