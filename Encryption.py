@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 
 # Constants for file names
-FILE_NAME = "hello.txt"
+FILE_NAME = "Enter your file name"
 ENCRYPTED_FILE_NAME = FILE_NAME + ".enc"
 SALT_FILE_NAME = FILE_NAME + ".salt"
 
