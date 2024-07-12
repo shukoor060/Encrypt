@@ -33,7 +33,7 @@ This project involves developing an application for file encryption, protected b
 - Python 3.6 or above
 - Required Python libraries:
   - `cryptography`
-  - `numpy`
+
 
 ### **Steps**
 
@@ -47,7 +47,7 @@ This project involves developing an application for file encryption, protected b
 2. **Install the required Python libraries:**
 
     ```bash
-    pip install cryptography numpy
+    pip install cryptography 
     ```
 
 ## **Usage**
@@ -67,7 +67,6 @@ project-repo/
 ├── hello.txt.enc
 ├── hello.txt.salt
 ├── README.md
-└── requirements.txt
 ```
 
 ## Technical Details
