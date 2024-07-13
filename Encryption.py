@@ -1,6 +1,6 @@
 import os
 import base64
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
@@ -83,8 +83,10 @@ def encrypt_file(passphrase, file_path):
         print(f"Error: The file '{file_path}' was not found.")
     except PermissionError:
         print(f"Error: Permission denied when trying to access '{file_path}'.")
+    except IsADirectoryError:
+        print(f"Error: Expected a file but found a directory: '{file_path}'.")
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        print(f"An unexpected error occurred: {str(e)}")
 
 def decrypt_file(passphrase, encrypted_file_path):
     """
@@ -107,8 +109,12 @@ def decrypt_file(passphrase, encrypted_file_path):
         with open(encrypted_file_path, 'rb') as encrypted_file:
             encrypted_data = encrypted_file.read()
         
-        # Decrypt the data
-        decrypted_data = fernet.decrypt(encrypted_data)
+        try:
+            # Decrypt the data
+            decrypted_data = fernet.decrypt(encrypted_data)
+        except InvalidToken:
+            print("Incorrect passphrase.")
+            return
         
         # Write the decrypted data back to the original file
         original_file_path = encrypted_file_path.replace(ENCRYPTED_FILE_EXTENSION, "")
@@ -124,8 +130,10 @@ def decrypt_file(passphrase, encrypted_file_path):
         print(f"Error: The encrypted file or salt file was not found.")
     except PermissionError:
         print(f"Error: Permission denied when trying to access the files.")
+    except IsADirectoryError:
+        print(f"Error: Expected a file but found a directory: '{encrypted_file_path}'.")
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        print(f"An unexpected error occurred: {str(e)}")
 
 def encrypt_folder(passphrase, folder_path):
     """
